@@ -1,72 +1,43 @@
+#!/usr/bin/env python3
 import os
-import hashlib
-import json
+import sys
+import subprocess
 
-# 1. Vulnerabilidad de Seguridad Crítica: Inyección de Comandos (CWE-78)
-# SonarQube detectará esto como una falla de "Comando del sistema usado con datos de entrada no validados".
-def ejecutar_comando_inseguro(comando_usuario):
-    # ¡NUNCA hagas esto en código real!
-    print(f"Ejecutando: ping -c 1 {comando_usuario}")
-    os.system(f"sudo ping -c 1 {comando_usuario}") # <-- Riesgo de Inyección
+def unsafe_eval():
+    # vulnerabilidad: eval de input sin sanitizar → RCE
+    expr = input("Enter an expression to evaluate: ")
+    result = eval(expr)
+    print(f"Result: {result}")
 
-# 2. Vulnerabilidad de Seguridad: Uso de Hash Criptográfico Débil (CWE-327)
-# SonarQube detectará el uso de MD5.
-def generar_hash_debil(contrasena):
-    return hashlib.md5(contrasena.encode()).hexdigest() # <-- MD5 es débil
+def unsafe_command():
+    # vulnerabilidad: construcción de comando con input directo → command injection
+    user_dir = input("Enter directory to list: ")
+    cmd = f"ls {user_dir}"
+    subprocess.call(cmd, shell=True)
+    print("Done listing")
 
-# 3. Code Smell y Error Potencial: Condición Duplicada e Innecesaria
-def verificar_edad(edad):
-    if edad < 18:
-        print("Menor de edad.")
-        return False
-    elif edad >= 18:  # <-- La condición 'edad >= 18' es redundante e innecesaria
-        print("Mayor de edad.")
-        return True
+def unsafe_file_read():
+    # vulnerabilidad: path traversal posible
+    file_path = input("Enter filename to view: ")
+    with open(file_path, 'r') as f:
+        data = f.read()
+    print(data)
 
-# 4. Code Smell: Lógica de Código Muerto (Dead Code)
-def funcion_con_codigo_muerto():
-    x = 10
-    if False: # <-- Este bloque de código nunca se ejecutará
-        print("Este código nunca se ve")
-    return x + 5
+def main():
+    print("Choose action:")
+    print("1) Eval expression")
+    print("2) List directory")
+    print("3) Read file")
+    choice = input("> ")
+    if choice == '1':
+        unsafe_eval()
+    elif choice == '2':
+        unsafe_command()
+    elif choice == '3':
+        unsafe_file_read()
+    else:
+        print("Unknown option")
+        sys.exit(1)
 
-# 5. Code Smell: Magic Number (Número Mágico)
-IVA = 0.21 # <-- Esto está bien.
-def calcular_precio_final(precio):
-    precio_con_iva = precio + (precio * 0.21) # <-- Usar 0.21 directamente aquí es un "número mágico"
-    return precio_con_iva
-
-# 6. Error Lógico: Exposición de Stack Trace
-# Esto expone detalles internos del sistema a un usuario.
-def cargar_configuracion(archivo):
-    try:
-        with open(archivo, 'r') as f:
-            return json.load(f)
-    except Exception as e:
-        print(f"Error al cargar la configuración: {e}") # <--- Podría ser un error de seguridad/mantenimiento
-        # La forma correcta sería: logging.error("...") y retornar un valor por defecto.
-
-
-# --- Demostración ---
 if __name__ == "__main__":
-    print("--- 1. Inyección de Comandos ---")
-    # Entrada de un atacante. En Linux/macOS, esto ejecutaría 'ls -l'.
-    # Comando 'ping' se ejecutará con: 'ping -c 1 ; ls -l'
-    comando_malicioso = "127.0.0.1; ls -l"
-    ejecutar_comando_inseguro(comando_malicioso)
-
-    print("\n--- 2. Hash Débil ---")
-    hash_resultado = generar_hash_debil("MiContrasenaSecreta")
-    print(f"Hash MD5 generado: {hash_resultado}")
-
-    print("\n--- 3. Condición Duplicada ---")
-    verificar_edad(20)
-
-    print("\n--- 4. Código Muerto ---")
-    print(funcion_con_codigo_muerto())
-
-    print("\n--- 5. Número Mágico ---")
-    print(f"Precio con IVA: {calcular_precio_final(100)}")
-
-    print("\n--- 6. Manejo de Errores Inseguro ---")
-    cargar_configuracion("archivo_que_no_existe.json")
+    main()
